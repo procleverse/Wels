@@ -1,12 +1,13 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { MapPin, Clock, Zap, Trophy, Calendar, Users, Flame, Target } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { MapPin, Clock, Zap, Trophy, Calendar, Users, Flame, Target, Camera, Edit2 } from 'lucide-react';
 import { useUserProfile, useUserStats } from '@/hooks/useUserProfile';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useStreaks } from '@/hooks/useStreaks';
@@ -20,6 +21,22 @@ export const Profile: React.FC = () => {
   const { routes } = useRoutes();
   const { streakData } = useStreaks();
   const { rewards } = useRewards();
+  const { updateProfile } = useAuth();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    username: profile?.username || '',
+    fullName: profile?.full_name || '',
+  });
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateProfile({
+      username: editForm.username,
+      fullName: editForm.fullName,
+    });
+    setIsEditing(false);
+  };
 
   if (profileLoading || !profile) {
     return (
@@ -56,14 +73,60 @@ export const Profile: React.FC = () => {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={profile.avatar_url || ''} />
-                <AvatarFallback className="text-2xl bg-gradient-to-r from-skate-primary to-skate-secondary text-white">
-                  {profile.full_name?.[0] || profile.username?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-24 h-24">
+                  <AvatarImage src={profile.avatar_url || ''} />
+                  <AvatarFallback className="text-2xl bg-gradient-to-r from-skate-primary to-skate-secondary text-white">
+                    {profile.full_name?.[0] || profile.username?.[0] || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <Button 
+                  size="icon" 
+                  variant="secondary" 
+                  className="absolute bottom-0 right-0 rounded-full"
+                >
+                  <Camera size={14} />
+                </Button>
+              </div>
               
               <div className="text-center md:text-left flex-1">
+                <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="float-right">
+                      <Edit2 size={16} />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Редактировать профиль</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleEditSubmit} className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">Имя пользователя</label>
+                        <Input
+                          value={editForm.username}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+                          placeholder="Имя пользователя"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Полное имя</label>
+                        <Input
+                          value={editForm.fullName}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, fullName: e.target.value }))}
+                          placeholder="Полное имя"
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+                          Отмена
+                        </Button>
+                        <Button type="submit">Сохранить</Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
                 <h1 className="text-2xl font-bold mb-2">{profile.full_name || profile.username}</h1>
                 <p className="text-gray-600 mb-3">@{profile.username}</p>
                 <p className="text-gray-700 mb-4">
@@ -93,7 +156,6 @@ export const Profile: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Enhanced Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
@@ -128,7 +190,6 @@ export const Profile: React.FC = () => {
           </Card>
         </div>
 
-        {/* Goals Progress */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -161,7 +222,6 @@ export const Profile: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Rewards Summary */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -194,7 +254,6 @@ export const Profile: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Classic Achievements */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -233,7 +292,6 @@ export const Profile: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Routes */}
         <Card>
           <CardHeader>
             <CardTitle>Последние маршруты</CardTitle>
