@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,7 +37,7 @@ export const usePosts = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (username, full_name, avatar_url),
+          profiles (username, full_name, avatar_url),
           routes (distance, duration, average_speed)
         `)
         .order('created_at', { ascending: false });
