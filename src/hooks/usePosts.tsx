@@ -36,7 +36,7 @@ export const usePosts = () => {
         .from('posts')
         .select(`
           *,
-          profiles:user_id (username, full_name, avatar_url),
+          profiles!posts_user_id_fkey (username, full_name, avatar_url),
           routes (distance, duration, average_speed)
         `)
         .order('created_at', { ascending: false });
