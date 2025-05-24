@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -35,7 +34,7 @@ export const useLeaderboard = (period: 'week' | 'month' | 'all' = 'month') => {
           username,
           full_name,
           avatar_url,
-          routes!routes_user_id_fkey (
+          routes (
             distance,
             duration,
             average_speed,
