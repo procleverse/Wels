@@ -1,11 +1,15 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Map, User, Plus, TrendingUp } from 'lucide-react';
+import { Home, Map, User, Plus, TrendingUp, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
+  const { signOut } = useAuth();
+  const { toast } = useToast();
 
   const navItems = [
     { path: '/feed', label: 'Лента', icon: Home },
@@ -14,6 +18,22 @@ export const Navigation: React.FC = () => {
     { path: '/stats', label: 'Статистика', icon: TrendingUp },
     { path: '/profile', label: 'Профиль', icon: User },
   ];
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Выход выполнен",
+        description: "Вы успешно вышли из аккаунта",
+      });
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось выйти из аккаунта",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-lg border-b">
@@ -47,6 +67,15 @@ export const Navigation: React.FC = () => {
                 </Link>
               );
             })}
+            
+            <Button
+              variant="ghost"
+              onClick={handleSignOut}
+              className="flex items-center space-x-2 text-gray-600 hover:text-red-600"
+            >
+              <LogOut size={20} />
+              <span>Выйти</span>
+            </Button>
           </div>
 
           <div className="md:hidden flex items-center space-x-1">
@@ -70,6 +99,15 @@ export const Navigation: React.FC = () => {
                 </Link>
               );
             })}
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="p-2 text-gray-600 hover:text-red-600"
+            >
+              <LogOut size={20} />
+            </Button>
           </div>
         </div>
       </div>

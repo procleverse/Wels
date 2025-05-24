@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,26 +7,89 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Layout } from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export const Auth: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const { signIn, signUp, user, loading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAuth = async (e: React.FormEvent) => {
+  // Если пользователь уже авторизован, перенаправляем на главную
+  useEffect(() => {
+    if (user && !loading) {
+      navigate('/feed');
+    }
+  }, [user, loading, navigate]);
+
+  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     
-    // Имитация запроса к API
-    setTimeout(() => {
-      setIsLoading(false);
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      toast({
+        title: "Ошибка входа",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
       toast({
         title: "Добро пожаловать!",
         description: "Вы успешно вошли в RollerSocial",
       });
       navigate('/feed');
-    }, 1500);
+    }
+    
+    setIsSubmitting(false);
   };
+
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const username = formData.get('username') as string;
+    const fullName = formData.get('fullName') as string;
+
+    const { error } = await signUp(email, password, username, fullName);
+    
+    if (error) {
+      toast({
+        title: "Ошибка регистрации",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Регистрация успешна!",
+        description: "Добро пожаловать в RollerSocial",
+      });
+      navigate('/feed');
+    }
+    
+    setIsSubmitting(false);
+  };
+
+  if (loading) {
+    return (
+      <Layout showNavigation={false}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-skate-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Загрузка...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout showNavigation={false}>
@@ -55,9 +118,10 @@ export const Auth: React.FC = () => {
                 </TabsList>
                 
                 <TabsContent value="login">
-                  <form onSubmit={handleAuth} className="space-y-4">
+                  <form onSubmit={handleSignIn} className="space-y-4">
                     <div>
                       <Input 
+                        name="email"
                         type="email" 
                         placeholder="Email" 
                         className="w-full"
@@ -66,6 +130,7 @@ export const Auth: React.FC = () => {
                     </div>
                     <div>
                       <Input 
+                        name="password"
                         type="password" 
                         placeholder="Пароль" 
                         className="w-full"
@@ -75,17 +140,18 @@ export const Auth: React.FC = () => {
                     <Button 
                       type="submit" 
                       className="w-full bg-skate-primary hover:bg-blue-800"
-                      disabled={isLoading}
+                      disabled={isSubmitting}
                     >
-                      {isLoading ? "Вход..." : "Войти"}
+                      {isSubmitting ? "Вход..." : "Войти"}
                     </Button>
                   </form>
                 </TabsContent>
                 
                 <TabsContent value="register">
-                  <form onSubmit={handleAuth} className="space-y-4">
+                  <form onSubmit={handleSignUp} className="space-y-4">
                     <div>
                       <Input 
+                        name="username"
                         type="text" 
                         placeholder="Имя пользователя" 
                         className="w-full"
@@ -94,6 +160,16 @@ export const Auth: React.FC = () => {
                     </div>
                     <div>
                       <Input 
+                        name="fullName"
+                        type="text" 
+                        placeholder="Полное имя" 
+                        className="w-full"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Input 
+                        name="email"
                         type="email" 
                         placeholder="Email" 
                         className="w-full"
@@ -102,6 +178,7 @@ export const Auth: React.FC = () => {
                     </div>
                     <div>
                       <Input 
+                        name="password"
                         type="password" 
                         placeholder="Пароль" 
                         className="w-full"
@@ -111,9 +188,9 @@ export const Auth: React.FC = () => {
                     <Button 
                       type="submit" 
                       className="w-full bg-skate-secondary hover:bg-orange-600"
-                      disabled={isLoading}
+                      disabled={isSubmitting}
                     >
-                      {isLoading ? "Регистрация..." : "Зарегистрироваться"}
+                      {isSubmitting ? "Регистрация..." : "Зарегистрироваться"}
                     </Button>
                   </form>
                 </TabsContent>
