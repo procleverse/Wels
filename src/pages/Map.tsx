@@ -1,29 +1,53 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Square, MapPin, Clock, Zap, Save } from 'lucide-react';
+import { useRecording, useCreateRoute } from '@/hooks/useRoutes';
+import { useNavigate } from 'react-router-dom';
 
 export const Map: React.FC = () => {
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
+  const {
+    isRecording,
+    recordingTime,
+    currentRoute,
+    startRecording,
+    stopRecording
+  } = useRecording();
+  const { mutate: createRoute } = useCreateRoute();
+  const navigate = useNavigate();
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      // Начать запись
-      console.log('Начинаем запись маршрута');
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      const routeData = stopRecording();
+      // Можно сохранить маршрут автоматически или предложить пользователю
     } else {
-      // Остановить запись
-      console.log('Останавливаем запись маршрута');
+      startRecording();
     }
+  };
+
+  const handleSaveRoute = () => {
+    const routeData = stopRecording();
+    createRoute({
+      title: `Маршрут ${new Date().toLocaleDateString()}`,
+      distance: currentRoute.distance,
+      duration: currentRoute.duration,
+      average_speed: currentRoute.averageSpeed,
+      max_speed: currentRoute.maxSpeed
+    });
+    navigate('/create');
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   return (
     <Layout>
       <div className="h-screen-minus-nav relative">
-        {/* Заглушка для карты */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center">
           <div className="text-center">
             <MapPin size={64} className="text-skate-primary mx-auto mb-4" />
@@ -32,7 +56,6 @@ export const Map: React.FC = () => {
           </div>
         </div>
 
-        {/* Панель управления записью */}
         <div className="absolute bottom-6 left-6 right-6">
           <Card className="bg-white/95 backdrop-blur">
             <CardHeader className="pb-3">
@@ -41,9 +64,7 @@ export const Map: React.FC = () => {
                 {isRecording && (
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-mono">
-                      {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                    </span>
+                    <span className="text-sm font-mono">{formatTime(recordingTime)}</span>
                   </div>
                 )}
               </CardTitle>
@@ -55,29 +76,33 @@ export const Map: React.FC = () => {
                     <div>
                       <MapPin size={20} className="text-skate-primary mx-auto mb-1" />
                       <p className="text-sm text-gray-600">Расстояние</p>
-                      <p className="font-bold">2.4 км</p>
+                      <p className="font-bold">{currentRoute.distance.toFixed(1)} км</p>
                     </div>
                     <div>
                       <Clock size={20} className="text-skate-secondary mx-auto mb-1" />
                       <p className="text-sm text-gray-600">Время</p>
-                      <p className="font-bold">8:32</p>
+                      <p className="font-bold">{formatTime(currentRoute.duration)}</p>
                     </div>
                     <div>
                       <Zap size={20} className="text-skate-accent mx-auto mb-1" />
                       <p className="text-sm text-gray-600">Скорость</p>
-                      <p className="font-bold">16.8 км/ч</p>
+                      <p className="font-bold">{currentRoute.averageSpeed.toFixed(1)} км/ч</p>
                     </div>
                   </div>
                   
                   <div className="flex space-x-3">
                     <Button 
-                      onClick={toggleRecording}
+                      onClick={handleToggleRecording}
                       className="flex-1 bg-red-500 hover:bg-red-600 text-white"
                     >
                       <Square size={16} className="mr-2" />
                       Остановить
                     </Button>
-                    <Button variant="outline" className="flex-1">
+                    <Button 
+                      onClick={handleSaveRoute}
+                      variant="outline" 
+                      className="flex-1"
+                    >
                       <Save size={16} className="mr-2" />
                       Сохранить
                     </Button>
@@ -89,7 +114,7 @@ export const Map: React.FC = () => {
                     Нажмите кнопку записи, чтобы начать отслеживать ваш маршрут
                   </p>
                   <Button 
-                    onClick={toggleRecording}
+                    onClick={handleToggleRecording}
                     className="w-full bg-gradient-to-r from-skate-primary to-skate-secondary text-white py-6 text-lg"
                   >
                     <Play size={24} className="mr-2" />

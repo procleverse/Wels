@@ -7,13 +7,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Camera, MapPin, Clock, Zap, Plus, X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useCreatePost } from '@/hooks/usePosts';
+import { useRoutes } from '@/hooks/useRoutes';
+import { useNavigate } from 'react-router-dom';
 
 export const Create: React.FC = () => {
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
-  const { toast } = useToast();
+  const [selectedRouteId, setSelectedRouteId] = useState<string>();
+  
+  const { mutate: createPost, isPending } = useCreatePost();
+  const { routes } = useRoutes();
+  const navigate = useNavigate();
 
   const addTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -27,13 +33,26 @@ export const Create: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    toast({
-      title: "Пост опубликован!",
-      description: "Ваш маршрут был успешно добавлен в ленту",
-    });
-    setContent('');
-    setTags([]);
+    if (!content.trim()) return;
+    
+    const finalContent = tags.length > 0 
+      ? `${content}\n\n${tags.map(tag => `#${tag}`).join(' ')}`
+      : content;
+
+    createPost(
+      { content: finalContent, routeId: selectedRouteId },
+      {
+        onSuccess: () => {
+          setContent('');
+          setTags([]);
+          setSelectedRouteId(undefined);
+          navigate('/feed');
+        }
+      }
+    );
   };
+
+  const latestRoute = routes[0];
 
   return (
     <Layout>
@@ -41,7 +60,6 @@ export const Create: React.FC = () => {
         <h1 className="text-3xl font-bold text-skate-primary mb-6">Создать пост</h1>
 
         <div className="space-y-6">
-          {/* Основная карточка создания */}
           <Card>
             <CardHeader>
               <CardTitle>Поделитесь своим маршрутом</CardTitle>
@@ -54,14 +72,12 @@ export const Create: React.FC = () => {
                 className="min-h-[120px]"
               />
 
-              {/* Добавление фото */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-skate-primary transition-colors cursor-pointer">
                 <Camera size={32} className="mx-auto text-gray-400 mb-2" />
                 <p className="text-gray-600">Добавить фотографии</p>
-                <p className="text-sm text-gray-500">Нажмите или перетащите файлы</p>
+                <p className="text-sm text-gray-500">Функция будет доступна скоро</p>
               </div>
 
-              {/* Теги */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Теги</label>
                 <div className="flex space-x-2 mb-2">
@@ -89,46 +105,68 @@ export const Create: React.FC = () => {
                   ))}
                 </div>
               </div>
+
+              {routes.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Выберите маршрут</label>
+                  <select
+                    value={selectedRouteId || ''}
+                    onChange={(e) => setSelectedRouteId(e.target.value || undefined)}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="">Без маршрута</option>
+                    {routes.map((route) => (
+                      <option key={route.id} value={route.id}>
+                        {route.title} ({route.distance}км)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Статистика маршрута */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Статистика маршрута</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <MapPin size={24} className="text-skate-primary mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Расстояние</p>
-                  <p className="text-xl font-bold">12.5 км</p>
+          {latestRoute && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Последний маршрут</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <MapPin size={24} className="text-skate-primary mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">Расстояние</p>
+                    <p className="text-xl font-bold">{latestRoute.distance} км</p>
+                  </div>
+                  <div className="text-center p-4 bg-orange-50 rounded-lg">
+                    <Clock size={24} className="text-skate-secondary mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">Время</p>
+                    <p className="text-xl font-bold">{Math.floor(latestRoute.duration / 60)} мин</p>
+                  </div>
+                  <div className="text-center p-4 bg-red-50 rounded-lg">
+                    <Zap size={24} className="text-skate-accent mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">Ср. скорость</p>
+                    <p className="text-xl font-bold">{latestRoute.average_speed?.toFixed(1) || 0} км/ч</p>
+                  </div>
                 </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg">
-                  <Clock size={24} className="text-skate-secondary mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Время</p>
-                  <p className="text-xl font-bold">45 мин</p>
-                </div>
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <Zap size={24} className="text-skate-accent mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Ср. скорость</p>
-                  <p className="text-xl font-bold">16.7 км/ч</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Кнопки действий */}
           <div className="flex space-x-4">
             <Button 
               onClick={handleSubmit}
               className="flex-1 bg-gradient-to-r from-skate-primary to-skate-secondary text-white"
-              disabled={!content.trim()}
+              disabled={!content.trim() || isPending}
             >
-              Опубликовать
+              {isPending ? 'Публикация...' : 'Опубликовать'}
             </Button>
-            <Button variant="outline" className="flex-1">
-              Сохранить черновик
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => navigate('/feed')}
+            >
+              Отмена
             </Button>
           </div>
         </div>
