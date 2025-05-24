@@ -5,9 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, Zap, Trophy, Calendar, Users } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { MapPin, Clock, Zap, Trophy, Calendar, Users, Flame, Target } from 'lucide-react';
 import { useUserProfile, useUserStats } from '@/hooks/useUserProfile';
 import { useRoutes } from '@/hooks/useRoutes';
+import { useStreaks } from '@/hooks/useStreaks';
+import { useRewards } from '@/hooks/useRewards';
 import { useAuth } from '@/hooks/useAuth';
 
 export const Profile: React.FC = () => {
@@ -15,6 +18,8 @@ export const Profile: React.FC = () => {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const { stats } = useUserStats();
   const { routes } = useRoutes();
+  const { streakData } = useStreaks();
+  const { rewards } = useRewards();
 
   if (profileLoading || !profile) {
     return (
@@ -34,6 +39,9 @@ export const Profile: React.FC = () => {
     const remainingMinutes = minutes % 60;
     return `${hours}ч ${remainingMinutes}м`;
   };
+
+  const unlockedRewards = rewards.filter(r => r.isUnlocked);
+  const totalRewards = rewards.length;
 
   const achievements = [
     { name: 'Первые 10 км', icon: Trophy, earned: (stats?.totalDistance || 0) >= 10 },
@@ -66,6 +74,11 @@ export const Profile: React.FC = () => {
                   {profile.city && <Badge variant="secondary">{profile.city}</Badge>}
                   <Badge variant="secondary">Роллер</Badge>
                   <Badge variant="secondary">Активный</Badge>
+                  {(streakData?.currentStreak || 0) > 0 && (
+                    <Badge className="bg-orange-100 text-orange-800">
+                      🔥 {streakData?.currentStreak} дней
+                    </Badge>
+                  )}
                 </div>
               </div>
               
@@ -80,6 +93,7 @@ export const Profile: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Enhanced Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
@@ -107,13 +121,80 @@ export const Profile: React.FC = () => {
           
           <Card>
             <CardContent className="p-4 text-center">
-              <Calendar size={24} className="text-blue-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600 mb-1">Маршруты</p>
-              <p className="text-lg font-bold">{stats?.totalRoutes || 0}</p>
+              <Flame size={24} className="text-orange-500 mx-auto mb-2" />
+              <p className="text-sm text-gray-600 mb-1">Серия</p>
+              <p className="text-lg font-bold">{streakData?.currentStreak || 0} дней</p>
             </CardContent>
           </Card>
         </div>
 
+        {/* Goals Progress */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Target className="text-skate-primary" />
+              <span>Прогресс целей</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm font-medium">Недельная цель (3 поездки)</span>
+                  <span className="text-sm text-gray-600">
+                    {Math.round(streakData?.weeklyGoalProgress || 0)}%
+                  </span>
+                </div>
+                <Progress value={streakData?.weeklyGoalProgress || 0} className="h-2" />
+              </div>
+              
+              <div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm font-medium">Месячная цель (50 км)</span>
+                  <span className="text-sm text-gray-600">
+                    {Math.round(streakData?.monthlyGoalProgress || 0)}%
+                  </span>
+                </div>
+                <Progress value={streakData?.monthlyGoalProgress || 0} className="h-2" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rewards Summary */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Trophy className="text-yellow-500" />
+              <span>Награды ({unlockedRewards.length}/{totalRewards})</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 md:grid-cols-6 gap-4">
+              {rewards.slice(0, 6).map((reward) => (
+                <div
+                  key={reward.id}
+                  className={`p-3 rounded-lg text-center ${
+                    reward.isUnlocked
+                      ? 'bg-yellow-50 border border-yellow-200'
+                      : 'bg-gray-50 border border-gray-200'
+                  }`}
+                >
+                  <div className={`text-2xl mb-1 ${reward.isUnlocked ? '' : 'grayscale opacity-50'}`}>
+                    {reward.icon}
+                  </div>
+                  <p className={`text-xs font-medium ${
+                    reward.isUnlocked ? 'text-gray-900' : 'text-gray-500'
+                  }`}>
+                    {reward.title}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Classic Achievements */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -152,6 +233,7 @@ export const Profile: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Recent Routes */}
         <Card>
           <CardHeader>
             <CardTitle>Последние маршруты</CardTitle>

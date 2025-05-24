@@ -24,10 +24,12 @@ export interface Post {
     duration: number;
     average_speed?: number;
   };
+  user_liked?: boolean;
 }
 
 export const usePosts = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: posts = [], isLoading, error } = useQuery({
     queryKey: ['posts'],
@@ -36,14 +38,32 @@ export const usePosts = () => {
         .from('posts')
         .select(`
           *,
-          profiles:user_id (username, full_name, avatar_url),
+          profiles!posts_user_id_fkey (username, full_name, avatar_url),
           routes (distance, duration, average_speed)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Post[];
-    }
+
+      // Check if current user liked each post
+      const postsWithLikes = await Promise.all(
+        data.map(async (post) => {
+          if (!user) return { ...post, user_liked: false };
+          
+          const { data: likeData } = await supabase
+            .from('likes')
+            .select('id')
+            .eq('post_id', post.id)
+            .eq('user_id', user.id)
+            .single();
+            
+          return { ...post, user_liked: !!likeData };
+        })
+      );
+
+      return postsWithLikes as Post[];
+    },
+    enabled: true
   });
 
   return { posts, isLoading, error };
@@ -123,6 +143,79 @@ export const useLikePost = () => {
         description: "Не удалось обновить лайк",
         variant: "destructive"
       });
+    }
+  });
+};
+
+export const useDeletePost = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      if (!user) throw new Error('User not authenticated');
+
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      toast({
+        title: "Пост удален",
+        description: "Ваш пост был успешно удален",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить пост",
+        variant: "destructive"
+      });
+    }
+  });
+};
+
+export const useSharePost = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'RollerSocial - Пост',
+          text: 'Посмотри этот крутой пост!',
+          url: `${window.location.origin}/post/${postId}`
+        });
+      } else {
+        await navigator.clipboard.writeText(`${window.location.origin}/post/${postId}`);
+        throw new Error('Link copied to clipboard');
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Поделились!",
+        description: "Пост был успешно отправлен",
+      });
+    },
+    onError: (error) => {
+      if (error.message === 'Link copied to clipboard') {
+        toast({
+          title: "Ссылка скопирована",
+          description: "Ссылка на пост скопирована в буфер обмена",
+        });
+      } else {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось поделиться постом",
+          variant: "destructive"
+        });
+      }
     }
   });
 };
